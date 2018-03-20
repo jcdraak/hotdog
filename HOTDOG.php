@@ -107,19 +107,16 @@ sleep( $ini->CHECK_INTERVAL);
 
 
 function reBoot(){
-  //exec('restart_system.bat');
+  exec('restart_system.bat');
   sleep(60);
 }
 function shutDown(){
-  //exec('shutdown_system.bat');
+  exec('shutdown_system.bat');
   sleep(60);
 }
 function getGpuData(){
+
   exec('"C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi" --query-gpu=index,name,clocks.gr,power.draw,utilization.gpu,fan.speed,temperature.gpu --format=csv', $res);
-
-
-
-
 
   $headers = array(
       '0' => 'index',
