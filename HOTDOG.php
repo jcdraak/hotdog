@@ -75,6 +75,14 @@ if ( $ERROR_MINLOAD ) {
   writeln('+----------------------------------------------------------------------------+');
 }
 
+// БОТ СЛУШАЕТ КОМАНДЫ
+if ( $ini->LISTEN_ORDER == '1' ){
+  writeln();
+  writeln("ПРОВЕРКА КОМАНД В ЛИЧКЕ В ТЕЛЕГРАМЕ");
+  waitingYourOrders();
+}
+
+
 // ДЕЙСТВИЯ ПО РЕЗУЛЬТАТАМ ПРОВЕРКИ
 writeln();
 writeln("ДЕЙСТВИЯ ПО РЕЗУЛЬТАТАМ ПРОВЕРКИ");
@@ -161,10 +169,72 @@ function writeln( $s = '' ){
   GLOBAL $ini;
   echo str_repeat(' ', $ini->LEFT_MARGHIN) . $s."\n";
 }
-function sendScreen(){
+function sendScreen( $chat_id = 0){
   GLOBAL $ini;
   exec('screenCapture.bat temp.jpg "HOTDOG" > nul');
   sleep(3);
-  exec('curl -s -X POST "https://api.telegram.org/bot'.$ini->TELEGRAM_TOKEN.'/sendPhoto?chat_id='.$ini->TELEGRAM_CHATID.'" -F photo="@temp.jpg" -H "Content-Type:multipart/form-data" > nul');
-}
 
+  if ( !$chat_id ) $chat_id = $ini->TELEGRAM_CHATID;
+
+  exec('curl -s -X POST "https://api.telegram.org/bot'.$ini->TELEGRAM_TOKEN.'/sendPhoto?chat_id='.$chat_id.'" -F photo="@temp.jpg" -H "Content-Type:multipart/form-data" > nul');
+}
+function waitingYourOrders(){
+
+  writeln('+----------------------------------------------------------------------------+');
+
+
+
+
+  GLOBAL $ini;
+
+  // LISTEN BOT :: LAST ID сообщения на которое ответили
+  $fn =  __DIR__ . DIRECTORY_SEPARATOR . 'telegram_bot.txt';
+  $message_min = 0; if ( file_exists( $fn )) $message_min = intval(file_get_contents($fn)); $message_min = ($message_min) ? $message_min : 0;
+
+  //exec('curl https://api.telegram.org/bot'.$ini->TELEGRAM_TOKEN.'/getUpdates > telegram_history.txt', $json);
+  exec('curl --silent https://api.telegram.org/bot'.$ini->TELEGRAM_TOKEN.'/getUpdates', $json);
+  $json = implode('',$json);
+//  $json = file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'telegram_history.txt');
+  $data = json_decode($json);
+
+  // LISTEN BOT :: LOOKING LINES
+  $chat_message_id = 0; $nomess = true;
+  if ( is_object($data) ) {
+
+    foreach( $data->result as $item){
+      $chat_type       = $item->message->chat->type;
+      $chat_id       = $item->message->chat->id;
+      $chat_text       = $item->message->text;
+      $chat_message_id = $item->message->message_id;
+      if ( $chat_type == 'private' and $chat_message_id > $message_min and stristr($chat_text, 'покажи стату')){
+        sendScreen( $chat_id );
+        $nomess = false;
+        writeln("| Найдена команда: {$chat_text} "  );
+        // https://api.telegram.org/bot<Bot_token>/sendMessage?chat_id=<chat_id>&text=Привет%20мир
+/*
+        // TELEGRAMM
+        $params = array(
+            'chat_id'=>$chat_id,
+            'reply_to_message_id'=>$chat_message_id,
+            'text'=>"Тут типа будет стата",
+        );
+        $ch = curl_init('https://api.telegram.org/bot'.$ini->TELEGRAM_TOKEN.'/sendMessage');
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, ($params));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        */
+      }
+
+    }
+  }
+
+  // LISTEN BOT :: UPDATE LAST ID
+  if ( file_exists( $fn )) unlink( $fn );
+  $fp = fopen($fn, 'w'); fwrite($fp, $chat_message_id); fclose($fp);
+  if ( $nomess ) writeln("| Нам никто не писал больше, ничего не просил сделать хы                     |");
+  writeln('+----------------------------------------------------------------------------+');
+}
