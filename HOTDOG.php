@@ -199,8 +199,7 @@ function waitingYourOrders(){
 
   // LISTEN BOT :: LOOKING LINES
   $chat_message_id = 0; $nomess = true;
-  if ( is_object($data) ) {
-
+  if ( is_object($data) and is_array($data->result) ) {
     foreach( $data->result as $item){
       $chat_type       = $item->message->chat->type;
       $chat_id       = $item->message->chat->id;
